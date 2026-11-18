@@ -13,6 +13,7 @@ from pydantic import ValidationError
 from cv_benchkit.converters import (
     BBox,
     COCOAnnotation,
+    COCOCategory,
     COCODataset,
     COCOImage,
     coco_to_voc,
@@ -328,3 +329,35 @@ class TestCOCOImage:
         img = COCOImage(id=1, file_name="img.jpg", width=100, height=200)
         assert img.width == 100
         assert img.height == 200
+
+
+class TestCOCOCategory:
+    """Tests for COCOCategory id and name validation (#53)."""
+
+    def test_accepts_valid_category(self) -> None:
+        category = COCOCategory(id=1, name="person")
+        assert category.id == 1
+        assert category.name == "person"
+
+    def test_accepts_zero_id(self) -> None:
+        category = COCOCategory(id=0, name="background")
+        assert category.id == 0
+
+    def test_rejects_negative_id(self) -> None:
+        with pytest.raises(ValidationError):
+            COCOCategory(id=-1, name="person")
+
+    @pytest.mark.parametrize("name", ["", "   ", "\t\n "])
+    def test_rejects_blank_name(self, name: str) -> None:
+        with pytest.raises(ValidationError, match="category name must not be empty or whitespace"):
+            COCOCategory(id=1, name=name)
+
+    def test_rejects_blank_name_inside_a_dataset(self) -> None:
+        with pytest.raises(ValidationError, match="category name must not be empty or whitespace"):
+            COCODataset(
+                images=[COCOImage(id=1, file_name="img.jpg", width=10, height=10)],
+                annotations=[
+                    COCOAnnotation(id=1, image_id=1, category_id=1, bbox=[0, 0, 5, 5], area=25)
+                ],
+                categories=[COCOCategory(id=1, name="  ")],
+            )

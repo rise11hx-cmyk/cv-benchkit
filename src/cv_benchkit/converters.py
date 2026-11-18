@@ -93,11 +93,19 @@ class COCOImage(BaseModel):
 
 
 class COCOCategory(BaseModel):
-    """Minimal COCO category record."""
+    """Minimal COCO category record with a non-negative id and a non-blank name."""
 
-    id: int
+    id: int = Field(ge=0)
     name: str
     supercategory: str = ""
+
+    @field_validator("name")
+    @classmethod
+    def _non_blank(cls, v: str) -> str:
+        if not v.strip():
+            msg = "category name must not be empty or whitespace"
+            raise ValueError(msg)
+        return v
 
 
 class COCODataset(BaseModel):
